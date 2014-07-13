@@ -41,21 +41,21 @@ void setup(){
 }
 
 void loop(){
-  Serial.println("Reset Motors");
+  //Serial.println("Reset Motors");
   brake();
   delay(2000);
-  Serial.println("Drive Forward");
+  //Serial.println("Drive Forward");
   drive(255, FORWARD);
-  delay(5000);
-  Serial.println("Drive Reverse");
-  drive(255, REVERSE);
-  delay(5000);
-  Serial.println("Pivot Left");
+  delay(2000);
+  //Serial.println("Pivot Left");
   pivot(255, LEFT);
-  delay(5000);
-  Serial.println("Pivot RIGHT");
+  delay(4000);
+  //Serial.println("Drive Reverse");
+  drive(255, REVERSE);
+  delay(2000);
+  //Serial.println("Pivot RIGHT");
   pivot(255, RIGHT);
-  delay(5000);  
+  delay(4000);  
 }
 
 void go(int motorPinA, int motorPinB, int motorEnable, int motorSpeed, int motorDirection){
