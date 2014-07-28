@@ -1,7 +1,13 @@
 /*
-Arduino - Motor Control
+* Autonomous Obstacle Avoidance Vehicle
+*
+* Description: Vehicle that avoids obstacles and can navigate across a flat surface
+*
+* Author: Amar Bhatt
 */
 
+
+// Define Motor Pins
 const int motorR1A = 22;
 const int motorR1B = 23;
 const int motorF1A = 24;
@@ -17,20 +23,25 @@ const int motorF1E = 3;
 const int motorR2E = 4;
 const int motorF2E = 5;
 
+// Define Sensor Pins
 const int trigPin = 7;
 const int echoPin = 8;
 
+// Define distance constants
 const int TooClose = 2;
 const int OK = 10;
 const int Good = 15;
 
+// Define speed constants
 const int halfSpeed = 128;
 const int threeQuartersSpeed = 188;
 const int fullSpeed = 250;
 
+// Direction variables
 int curDir = -1;
 int prevDir = -1;
 
+// Direction of motion enumeration
 enum motorDirection {
   FORWARD,
   REVERSE,
@@ -38,6 +49,7 @@ enum motorDirection {
   LEFT
 };
 
+// Initialize pins  
 void setup(){
   Serial.begin(9600);
   
@@ -74,40 +86,60 @@ void loop(){
 //  pivot(255, RIGHT);
 //  delay(4000);  
 
+  // Poll Ultrasonic distance sensor
   long inches = getDistanceFromObstacle();
-  
+
+  // If TooClose reverse and turn
   if (inches <= TooClose){
-    brake();
-    drive(halfSpeed, REVERSE);
+    brake(); // Stop
+    drive(halfSpeed, REVERSE); // Reverse
     delay(1000);
+    // If the vehicle was in midst of turning
     if(prevDir != -1){
+      // If the vehicle was not in the process of correcting a previous turn mistake
       if (curDir == -1){
-        curDir = (prevDir == RIGHT) ? LEFT : RIGHT;
+        curDir = (prevDir == RIGHT) ? LEFT : RIGHT; // Turn in the opposite direction
         pivot(fullSpeed, curDir);
        delay(2000); 
       }else{
-        pivot(fullSpeed, curDir);
+        pivot(fullSpeed, curDir); // Turn in the current direction
         delay(2000);
       }     
     }
-  }else if (inches <= OK){
+  }
+  // If OK start turning slightly away from obstacle
+  else if (inches <= OK){
+     // If the vehicle was not already turning
      if(prevDir == -1){
-       pivot(fullSpeed, RIGHT);
+       pivot(fullSpeed, RIGHT); // Turn right by default
        prevDir = RIGHT;
        delay(2000);
-     }else {
+     }else { // else turn in the current direction
        pivot(fullSpeed, curDir);
-       prevDir = curDir;
+       prevDir = curDir; // set the previous direction equal to the current direction
        delay(2000);
      } 
-  }else {
+  }
+  // Keep driving forward!
+  else {
     drive(fullSpeed, FORWARD);
+    // Reset direction variables
     curDir = -1;
     prevDir = -1;
     delay(500);
   }
 }
 
+/*
+* go(int, int, int, int, int)
+*
+* Description: Sets the passed in motor with passed in direction and speed 
+*
+* Parameters: motorPinA/motorPinB = the 2 pins the wheel motor is attached to
+*             motorEnable = the enable pin for the wheel motor
+*             motorSpeed = the speed the wheel motor needs to be set to
+*             motorDirection = direction wheel motor needs to go in
+*/
 void go(int motorPinA, int motorPinB, int motorEnable, int motorSpeed, int motorDirection){
   analogWrite(motorEnable, motorSpeed);
   //Forward
@@ -121,6 +153,14 @@ void go(int motorPinA, int motorPinB, int motorEnable, int motorSpeed, int motor
   }
 }
 
+/*
+* drive(int, int)
+*
+* Description: Sets up vehicle to travel either Forward or Reverse
+*
+* Parameters: driveSpeed = the speed the vehicle needs to go
+*             driveDirection = direction (FORWARD or REVERSE)
+*/
 void drive(int driveSpeed, int driveDirection) {
   go(motorR1A, motorR1B, motorR1E, driveSpeed, driveDirection);
   go(motorF1A, motorF1B, motorF1E, driveSpeed, driveDirection);
@@ -128,6 +168,14 @@ void drive(int driveSpeed, int driveDirection) {
   go(motorF2A, motorF2B, motorF2E, driveSpeed, driveDirection);  
 }
 
+/*
+* pivot(int, int)
+*
+* Description: Sets up vehicle to turn either LEFT or RIGHT
+*
+* Parameters: pivotSpeed = the speed the vehicle needs to turn at
+*             pivotDirection = direction of turning (LEFT or RIGHT)
+*/
 void pivot (int pivotSpeed, int pivotDirection){
   //Pivot Left
   if (pivotDirection == RIGHT) {
@@ -145,6 +193,12 @@ void pivot (int pivotSpeed, int pivotDirection){
   }
 }
 
+/*
+* brake()
+*
+* Description: Stops vehicle and turns off motors
+*
+*/
 void brake() {
   analogWrite(motorR1E, 0);
   analogWrite(motorF1E, 0);
@@ -160,6 +214,13 @@ void brake() {
   digitalWrite(motorF2B, LOW);
 }
 
+/*
+* getDistanceFromObstacle()
+*
+* Description: Uses distance sensor to get distance from nearest object
+*
+* Return: long = inches from object
+*/
 long getDistanceFromObstacle() {
   //Variables for inches and centimeter conversion
   long duration;
@@ -177,6 +238,13 @@ long getDistanceFromObstacle() {
   return microsecondsToInches(duration);
 }
 
+/*
+* microsecondsToInches(long)
+*
+* Description: Converts time into inches
+*
+* Return: long = inches from object
+*/
 long microsecondsToInches(long microseconds){
   // According to Parallax's datasheet for the PING))), there are
   // 73.746 microseconds per inch (i.e. sound travels at 1130 feet per
