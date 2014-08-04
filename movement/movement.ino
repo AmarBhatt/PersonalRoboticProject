@@ -6,6 +6,9 @@
 * Author: Amar Bhatt
 */
 
+//Libraries
+#include <Servo.h>
+
 
 // Define Motor Pins
 const int motorR1A = 22;
@@ -28,7 +31,8 @@ const int trigPin = 7;
 const int echoPin = 8;
 
 // Define distance constants
-const int TooClose = 2;
+const int TooClose = 4;
+const int Caution = 7;
 const int OK = 10;
 const int Good = 15;
 
@@ -36,6 +40,11 @@ const int Good = 15;
 const int halfSpeed = 128;
 const int threeQuartersSpeed = 188;
 const int fullSpeed = 250;
+
+// Define angle constants
+const int right = 150;
+const int left = 30;
+const int center = 90;
 
 // Direction variables
 int curDir = -1;
@@ -48,6 +57,9 @@ enum motorDirection {
   RIGHT,
   LEFT
 };
+
+// create servo object to control a servo
+Servo myservo;  
 
 // Initialize pins  
 void setup(){
@@ -66,67 +78,64 @@ void setup(){
   pinMode(trigPin, OUTPUT);
   pinMode(echoPin, INPUT);
   
+  myservo.attach(10);  // attaches the servo on pin 9 to the servo object
+  
   Serial.println("Start Motors");
 }
 
 void loop(){
-//  //Serial.println("Reset Motors");
-//  brake();
-//  delay(2000);
-//  //Serial.println("Drive Forward");
-//  drive(255, FORWARD);
-//  delay(2000);
-//  //Serial.println("Pivot Left");
-//  pivot(255, LEFT);
-//  delay(4000);
-//  //Serial.println("Drive Reverse");
-//  drive(255, REVERSE);
-//  delay(2000);
-//  //Serial.println("Pivot RIGHT");
-//  pivot(255, RIGHT);
-//  delay(4000);  
-
+  
   // Poll Ultrasonic distance sensor
-  long inches = getDistanceFromObstacle();
+  long inches = getDistanceFromObstacle(center);
 
   // If TooClose reverse and turn
   if (inches <= TooClose){
     brake(); // Stop
     drive(halfSpeed, REVERSE); // Reverse
-    delay(1000);
-    // If the vehicle was in midst of turning
-    if(prevDir != -1){
-      // If the vehicle was not in the process of correcting a previous turn mistake
-      if (curDir == -1){
-        curDir = (prevDir == RIGHT) ? LEFT : RIGHT; // Turn in the opposite direction
-        pivot(fullSpeed, curDir);
-       delay(2000); 
-      }else{
-        pivot(fullSpeed, curDir); // Turn in the current direction
-        delay(2000);
-      }     
+    delay(500);
+    brake();
+    int turn = bestPath();
+    if (turn == LEFT || turn == RIGHT){
+      pivot(fullSpeed, turn);
+      delay(1500);
+    }
+    else{
+      drive(fullSpeed, turn);
+      delay(100);
+    }
+  }
+  else if (inches <= Caution){
+    brake();
+    int turn = bestPath();
+    if (turn == LEFT || turn == RIGHT){
+      pivot(fullSpeed, turn);
+      delay(1500);
+    }
+    else{
+      drive(threeQuartersSpeed, turn);
+      delay(100);
     }
   }
   // If OK start turning slightly away from obstacle
   else if (inches <= OK){
-     // If the vehicle was not already turning
-     if(prevDir == -1){
-       pivot(fullSpeed, RIGHT); // Turn right by default
-       prevDir = RIGHT;
-       delay(2000);
-     }else { // else turn in the current direction
-       pivot(fullSpeed, curDir);
-       prevDir = curDir; // set the previous direction equal to the current direction
-       delay(2000);
-     } 
+    brake();
+    int turn = bestPath();
+    if (turn == LEFT || turn == RIGHT){
+      pivot(fullSpeed, turn);
+      delay(1500);
+    }
+    else{
+      drive(fullSpeed, turn);
+      delay(100);
+    }
   }
   // Keep driving forward!
   else {
     drive(fullSpeed, FORWARD);
     // Reset direction variables
-    curDir = -1;
-    prevDir = -1;
-    delay(500);
+    //curDir = -1;
+    //prevDir = -1;
+    delay(100);
   }
 }
 
@@ -215,13 +224,58 @@ void brake() {
 }
 
 /*
+* bestPath()
+*
+* Description: Finds the best path of movement
+*
+* Return: int = direction of movement
+*/
+int bestPath() {
+  long R, L, C;
+  long result;
+  int dir;
+  //Check right
+  R = getDistanceFromObstacle(right);
+  delay(500);
+  //Check left
+  L = getDistanceFromObstacle(left);
+  delay(500);
+  //Check center
+  C = getDistanceFromObstacle(center);
+  delay(500);
+  
+  if (R > L && R > C) {
+    result = R;
+    dir = RIGHT;
+  }
+  else if (L > R && L > C){
+    result = L;
+    dir = LEFT;
+  }
+  else{
+    result = C;
+    dir = FORWARD;
+  }
+  if(result <= TooClose){
+    dir = REVERSE;
+  }
+  
+  return dir;
+}
+
+/*
 * getDistanceFromObstacle()
 *
 * Description: Uses distance sensor to get distance from nearest object
 *
+* Parameters: int angle = the angle at which the sensor needs to be pinged at
+*
 * Return: long = inches from object
 */
-long getDistanceFromObstacle() {
+long getDistanceFromObstacle(int angle) {
+  // Angle sensor
+  myservo.write(angle);
+  delay(200);
   //Variables for inches and centimeter conversion
   long duration;
   //Ensure clean pulse
@@ -234,6 +288,8 @@ long getDistanceFromObstacle() {
   //Read Pulse Back
   duration = pulseIn(echoPin, HIGH);
   
+  // Move sensor back to center
+  myservo.write(center);
   //convert to inches
   return microsecondsToInches(duration);
 }
